@@ -2,6 +2,7 @@ from flask import Flask
 from flask import request, make_response, jsonify
 import scrapetube
 import json
+from modules.SnapCrap import get_json, profile_metadata
 
 app = Flask(__name__)
 
@@ -28,6 +29,18 @@ def api_channel():
     
     data = getChannel(query)
     
+    return jsonify(data)
+
+@app.route('/api/snaptchat')
+def api_snaptchat():
+    query = request.args.get('query')
+    if query is None:
+        res = jsonify({"error": "query is required"})
+        return make_response(res, 400)
+
+    data_profile = get_json(query)
+    data = profile_metadata(data_profile)
+
     return jsonify(data)
     
 
