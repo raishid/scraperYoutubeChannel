@@ -1,8 +1,10 @@
 from flask import Flask
 from flask import request, make_response, jsonify
 import scrapetube
-import json
 from modules.SnapCrap import get_json, profile_metadata
+from modules.linkedin_scraper import Person, actions
+from undetected_chromedriver import Chrome, ChromeOptions
+from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
 
@@ -42,6 +44,30 @@ def api_snaptchat():
     data = profile_metadata(data_profile)
 
     return jsonify(data)
+
+@app.route('/api/linkedin')
+def api_linkedin():
+    query = request.args.get('query')
+    if query is None:
+        res = jsonify({"error": "query is required"})
+        return make_response(res, 400)
+
+
+    cookie = open('cookies.linkedin.txt', 'r').read()
+
+    options = ChromeOptions()
+    options.add_argument("--headless=new")
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36")
+
+    driver = Chrome(options=options, driver_executable_path=ChromeDriverManager(url="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/", latest_release_url="https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE").install())
+    actions.login(driver, cookie=cookie) # if email and password isnt given, it'll prompt in terminal
+    person = Person(query, driver=driver)
+
+    return jsonify({
+        "name": person.name,
+        "profile_image": person.profile_image,
+        "query": query
+    })
     
 
 if __name__ == '__main__':

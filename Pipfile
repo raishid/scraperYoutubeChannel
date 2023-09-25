@@ -6,6 +6,10 @@ name = "pypi"
 [packages]
 scrapetube = "*"
 flask = "*"
+undetected-chromedriver = "*"
+webdriver-manager = "*"
+beautifulsoup4 = "*"
+lxml = "*"
 
 [dev-packages]
 
