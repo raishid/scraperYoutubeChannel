@@ -5,15 +5,20 @@ from modules.SnapCrap import get_json, profile_metadata
 from modules.linkedin_scraper import Person, actions
 from undetected_chromedriver import Chrome, ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
+import json
 
 app = Flask(__name__)
 
 def getChannel(query: str):
     videos = scrapetube.get_search(query=query, results_type="channel")
     channel = list(videos)[0]
-    """ print(json.dumps(channel, indent=4)) """
+    try:
+        description = channel['descriptionSnippet']['runs'][0]['text']
+    except:
+        description = None
     data = {
-        "description": channel['descriptionSnippet']['runs'][0]['text'],
+        "description": description,
         "channelId": channel['channelId'],
         "title": channel['title']['simpleText'],
         "thumbail": f"https:{channel['thumbnail']['thumbnails'][-1]['url']}",
@@ -56,12 +61,20 @@ def api_linkedin():
     cookie = open('cookies.linkedin.txt', 'r').read()
 
     options = ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36")
+    options.add_argument("--headless=chrome")
+    options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64; Ubuntu 22.04) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
 
-    driver = Chrome(options=options, driver_executable_path=ChromeDriverManager(url="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/", latest_release_url="https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE").install())
+    chromemanager = ChromeDriverManager(url="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/", latest_release_url="https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE").install()
+    print(chromemanager)
+    driver = Chrome(options=options, driver_executable_path=chromemanager)
     actions.login(driver, cookie=cookie) # if email and password isnt given, it'll prompt in terminal
     person = Person(query, driver=driver)
+
+    driver.quit()
 
     return jsonify({
         "name": person.name,
@@ -71,4 +84,4 @@ def api_linkedin():
     
 
 if __name__ == '__main__':
-    app.run()
+    app.run(async_mode='gevent_uwsgi')
