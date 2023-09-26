@@ -10,6 +10,7 @@ undetected-chromedriver = "*"
 webdriver-manager = "*"
 beautifulsoup4 = "*"
 lxml = "*"
+tweety-ns = "*"
 
 [dev-packages]
 

@@ -6,6 +6,7 @@ from modules.linkedin_scraper import Person, actions
 from undetected_chromedriver import Chrome, ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
+from tweety import Twitter
 import json
 
 app = Flask(__name__)
@@ -80,6 +81,23 @@ def api_linkedin():
         "name": person.name,
         "profile_image": person.profile_image,
         "query": query
+    })
+
+@app.route('/api/twitter')
+def api_twitter():
+    query = request.args.get('query')
+    if query is None:
+        res = jsonify({"error": "query is required"})
+        return make_response(res, 400)
+    
+    tw = Twitter('bth')
+    uinfo = tw.get_user_info(query)
+    return jsonify({
+        "name": uinfo.name,
+        "profile_image": uinfo.profile_image_url_https,
+        "followers": uinfo.followers_count,
+        "following": uinfo.friends_count,
+        "tweets": uinfo.statuses_count,
     })
     
 
