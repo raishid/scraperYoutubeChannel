@@ -93,6 +93,7 @@ def api_twitter():
     tw = Twitter('bth')
     uinfo = tw.get_user_info(query)
     return jsonify({
+        "id": uinfo.id,
         "name": uinfo.name,
         "profile_image": uinfo.profile_image_url_https,
         "followers": uinfo.followers_count,
