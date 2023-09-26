@@ -11,6 +11,8 @@ webdriver-manager = "*"
 beautifulsoup4 = "*"
 lxml = "*"
 tweety-ns = "*"
+gevent = "*"
+eventlet = "*"
 
 [dev-packages]
 

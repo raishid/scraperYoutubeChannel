@@ -6,7 +6,7 @@ from modules.linkedin_scraper import Person, actions
 from undetected_chromedriver import Chrome, ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
-from tweety import Twitter
+from modules.tweety.src.tweety import Twitter
 import json
 
 app = Flask(__name__)
@@ -99,7 +99,7 @@ def api_twitter():
         "following": uinfo.friends_count,
         "tweets": uinfo.statuses_count,
     })
-    
+
 
 if __name__ == '__main__':
     app.run(async_mode='gevent_uwsgi')

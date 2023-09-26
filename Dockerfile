@@ -1,4 +1,4 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.9
+FROM tiangolo/uwsgi-nginx-flask:python3.8
 
 RUN apt update && apt install -y unzip xvfb libxi6 libgconf-2-4 wget curl
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
@@ -12,6 +12,8 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN mkdir -p /usr/src/app
 
 COPY . /usr/src/app
+
+COPY ./_io_epoll.py /usr/local/lib/python3.8/site-packages/trio/_core/
 
 WORKDIR /usr/src/app
 
