@@ -8,6 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from modules.tweety.src.tweety import Twitter
 import json
+import requests
 
 app = Flask(__name__)
 
@@ -100,6 +101,16 @@ def api_twitter():
         "following": uinfo.friends_count,
         "tweets": uinfo.statuses_count,
     })
+
+@app.route('/api/creacionesmarfeluis')
+def getMarfeluis():
+    r = requests.get('https://www.instagram.com/api/v1/users/web_profile_info/?username=creacionesmarfeluis.oficial', headers={
+        "X-Ig-App-Id": "936619743392459"
+    })
+
+    data = r.json()
+
+    return make_response(data)
 
 
 if __name__ == '__main__':
