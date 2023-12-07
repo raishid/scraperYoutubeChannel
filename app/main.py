@@ -7,8 +7,9 @@ from undetected_chromedriver import Chrome, ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from modules.tweety.src.tweety import Twitter
-import json
 import requests
+import base64
+from urllib.request import urlopen
 
 app = Flask(__name__)
 
@@ -111,7 +112,18 @@ def getMarfeluis():
 
     data = r.json()
 
-    return make_response(data)
+    posts = []
+
+    edges = data["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
+
+    for post in edges:
+        imageuri = base64.b64encode(urlopen(post['node']['thumbnail_src']).read()).decode('utf-8')
+        posts.append({
+            "url_encode": f"data:image/jpeg;base64,{imageuri}",
+            "url_post": f"https://www.instagram.com/p/{post['node']['shortcode']}"
+        })
+
+    return make_response(posts)
 
 
 if __name__ == '__main__':
