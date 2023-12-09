@@ -10,6 +10,10 @@ from modules.tweety.src.tweety import Twitter
 import requests
 import base64
 from urllib.request import urlopen
+import numpy as np
+from dotenv import load_dotenv
+import json
+import os
 
 app = Flask(__name__)
 
@@ -61,7 +65,23 @@ def api_linkedin():
         return make_response(res, 400)
 
 
-    cookie = open('cookies.linkedin.txt', 'r').read()
+    rs = requests.get(f'{os.environ.get("API_URL")}/socials/accounts/linkedin', headers={
+        "X-Encryption-Key": os.environ.get("APP_KEY"),
+    })
+    
+    data = rs.json()
+    
+    #select random data
+    data = np.random.choice(data)
+    
+    cookies = json.loads(data['cookies'])
+    
+    cookie = None
+
+    for cookie in cookies:
+        if cookie['name'] == 'li_at':
+            cookie = cookie['value']
+            break
 
     options = ChromeOptions()
     options.add_argument("--headless=chrome")

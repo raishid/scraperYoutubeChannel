@@ -1,3 +1,4 @@
 modules/__pycache__
 modules/linkedin_scraper/__pycache__
 cookies.linkedin.txt
+.env
