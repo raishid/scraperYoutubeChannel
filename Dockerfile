@@ -9,6 +9,8 @@ COPY ./requirements.txt /tmp/
 
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
+RUN playwright install
+
 RUN mkdir -p /usr/src/app
 
 COPY . /usr/src/app

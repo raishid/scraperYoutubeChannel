@@ -9,7 +9,7 @@ def main():
 if __name__ == "__main__":
     main() """
 
-import requests
+""" import requests
 import base64
 from urllib.request import urlopen
 
@@ -29,4 +29,16 @@ for post in edges:
     posts.append({
         "url_encode": imageuri,
         "url_post": f"https://www.instagram.com/p/{post['shortcode']}"
-    })
+    }) """
+
+from modules.pytok.tiktok import PyTok
+import asyncio
+
+async def main():
+    async with PyTok(headless=True) as api:
+        user = api.user(username="raishid17")
+        user_data = await user.info()
+        print(user_data)
+
+if __name__ == "__main__":
+    asyncio.run(main())

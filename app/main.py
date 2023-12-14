@@ -7,6 +7,7 @@ from undetected_chromedriver import Chrome, ChromeOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from modules.tweety.src.tweety import Twitter
+from modules.pytok.tiktok import PyTok
 import requests
 import base64
 from urllib.request import urlopen
@@ -14,8 +15,11 @@ import numpy as np
 from dotenv import load_dotenv
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 app = Flask(__name__)
+executor = ThreadPoolExecutor()
 
 def getChannel(query: str):
     videos = scrapetube.get_search(query=query, results_type="channel")
@@ -123,6 +127,23 @@ def api_twitter():
         "tweets": uinfo.statuses_count,
     })
 
+@app.route('/api/tiktok')
+def api_tiktok():
+    query = request.args.get('query')
+    if query is None:
+        res = jsonify({"error": "query is required"})
+        return make_response(res, 400)
+    
+    query = query.replace("@", "")
+
+    res = executor.submit(executeTiktok, query)
+
+    user_data = res.result()
+
+    return jsonify(user_data)
+    
+    
+
 @app.route('/api/creacionesmarfeluis')
 def getMarfeluis():
     r = requests.get('https://www.instagram.com/api/v1/users/web_profile_info/?username=creacionesmarfeluis.oficial', headers={
@@ -145,6 +166,21 @@ def getMarfeluis():
 
     return make_response(posts)
 
+def executeTiktok(user: str):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    user_data = loop.run_until_complete(getUserTikTok(user))
+    loop.close()
+    return user_data
+
+async def getUserTikTok(user: str):
+    async with PyTok(headless=True) as api:
+            user = api.user(username=user)
+            user_data = await user.info()
+    
+    return user_data
+
 
 if __name__ == '__main__':
-    app.run(async_mode='gevent_uwsgi')
+    app.run(debug=True, port=5000)
+    #app.run(async_mode='gevent_uwsgi')
