@@ -18,6 +18,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
+load_dotenv()
+
 app = Flask(__name__)
 executor = ThreadPoolExecutor()
 
