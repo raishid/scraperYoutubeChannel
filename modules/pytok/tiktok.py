@@ -6,7 +6,16 @@ from typing import Optional
 
 import pyvirtualdisplay
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+
+try:
+    from playwright_stealth import stealth_async as _stealth_async
+except ImportError:
+    # Newer playwright-stealth versions expose a Stealth class instead.
+    from playwright_stealth import Stealth
+
+    async def _stealth_async(page):
+        await Stealth().apply_stealth_async(page)
+
 
 from .api.sound import Sound
 from .api.user import User
@@ -85,11 +94,11 @@ class PyTok:
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
-        device_config = self._playwright.devices['Desktop Chrome']
+        device_config = self._playwright.devices["Desktop Chrome"]
         self._browser = await self._playwright.chromium.launch(headless=self._headless)
         self._context = await self._browser.new_context(**device_config)
         self._page = await self._context.new_page()
-        await stealth_async(self._page)
+        await _stealth_async(self._page)
 
         self._requests = []
         self._responses = []
@@ -105,7 +114,6 @@ class PyTok:
         if self._request_delay is not None:
             await self._page.wait_for_timeout(self._request_delay * 1000)
 
-    
     def __del__(self):
         """A basic cleanup method, called automatically from the code"""
         if not self._is_context_manager:
@@ -142,11 +150,11 @@ class PyTok:
 
     async def get_ms_tokens(self):
         all_cookies = await self._context.cookies()
-        cookie_name = 'msToken'
+        cookie_name = "msToken"
         cookies = []
         for cookie in all_cookies:
-            if cookie["name"] == cookie_name and cookie['secure']:
-                cookies.append(cookie['value'])
+            if cookie["name"] == cookie_name and cookie["secure"]:
+                cookies.append(cookie["value"])
         if len(cookies) == 0:
             raise Exception(f"Could not find {cookie_name} cookie")
         return cookies

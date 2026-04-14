@@ -6,7 +6,12 @@ import time
 from typing import Callable
 from urllib.parse import urlparse
 import httpx as s
-from .exceptions_ import GuestTokenNotFound, UnknownError, UserNotFound, InvalidCredentials
+from .exceptions_ import (
+    GuestTokenNotFound,
+    UnknownError,
+    UserNotFound,
+    InvalidCredentials,
+)
 from .types.n_types import GenericError
 from .utils import custom_json, create_request_id
 from .builder import UrlBuilder
@@ -19,16 +24,27 @@ class Request:
         self.user = None
         self.username = None
         self._limits = []
-        self.__session = s.Client(proxies=proxy, timeout=60)
+        self.__session = self._build_client(proxy)
         self.__builder = UrlBuilder()
         self.__guest_token = self._get_guest_token(max_retries)
+
+    @staticmethod
+    def _build_client(proxy):
+        if proxy is None:
+            return s.Client(timeout=60)
+
+        # httpx changed from "proxies" to "proxy" in newer versions.
+        try:
+            return s.Client(proxy=proxy, timeout=60)
+        except TypeError:
+            return s.Client(proxies=proxy, timeout=60)
 
     @property
     def session(self):
         return self.__session
 
     def set_cookies(self, cookies):
-        self.__session.headers['Cookie'] = cookies
+        self.__session.headers["Cookie"] = cookies
         self.__builder.set_cookies(cookies)
         self._verify_cookies()
 
@@ -42,20 +58,24 @@ class Request:
         url = response.url
         headers = response.headers
 
-        if all(key in headers for key in ['x-rate-limit-reset', 'x-rate-limit-remaining']):
-            self._limits.append(dict(
-                path=url.path,
-                func=func,
-                limit_reset=int(headers['x-rate-limit-reset']),
-                limit_remaining=int(headers['x-rate-limit-remaining'])
-            ))
+        if all(
+            key in headers for key in ["x-rate-limit-reset", "x-rate-limit-remaining"]
+        ):
+            self._limits.append(
+                dict(
+                    path=url.path,
+                    func=func,
+                    limit_reset=int(headers["x-rate-limit-reset"]),
+                    limit_remaining=int(headers["x-rate-limit-remaining"]),
+                )
+            )
 
     def __get_response__(self, return_raw=False, ignoreNoneData=False, **request_data):
 
         response = self.__session.request(**request_data)
         self._update_rate_limit(response, inspect.stack()[1][3])
 
-        response_json = response.json_() # noqa
+        response_json = response.json_()  # noqa
         if ignoreNoneData and len(response.text) == 0:
             return None
 
@@ -64,14 +84,12 @@ class Request:
                 error_code=500,
                 error_name="Server Error",
                 response=response,
-                message="Unknown Error Occurs on Twitter"
+                message="Unknown Error Occurs on Twitter",
             )
 
         if response_json.get("errors"):
-            error = response_json['errors'][0]
-            return GenericError(
-                response, error.get("code"), error.get("message")
-            )
+            error = response_json["errors"][0]
+            return GenericError(response, error.get("code"), error.get("message"))
 
         if return_raw:
             return response
@@ -82,14 +100,19 @@ class Request:
         for retry in range(max_retries):
             response = self.__get_response__(**self.__builder.get_guest_token())
 
-            token = self.__builder.guest_token = response['guest_token'] # noqa
+            token = self.__builder.guest_token = response["guest_token"]  # noqa
             return token
 
-        raise GuestTokenNotFound(None, None, None, f"Guest Token couldn't be found after {max_retries} retires.")
+        raise GuestTokenNotFound(
+            None,
+            None,
+            None,
+            f"Guest Token couldn't be found after {max_retries} retires.",
+        )
 
     def _init_api(self):
         data = self.__builder.init_api()
-        data['json'] = {}
+        data["json"] = {}
         self.__get_response__(**data)
 
     def _verify_cookies(self):
@@ -108,19 +131,23 @@ class Request:
 
         response = self.__get_response__(**self.__builder.user_by_screen_name(username))
 
-        if response.get("data"): # noqa
+        if response.get("data"):  # noqa
             return response
 
-        raise UserNotFound(error_code=50, error_name="GenericUserNotFound", response=response)
+        raise UserNotFound(
+            error_code=50, error_name="GenericUserNotFound", response=response
+        )
 
     def login(self, _url, _payload):
         request_data = self.__builder.build_flow(_url)
-        request_data['json'] = _payload
+        request_data["json"] = _payload
         response = self.__get_response__(True, **request_data)
         return response
 
     def get_tweets(self, user_id, replies=False, cursor=None):
-        request_data = self.__builder.user_tweets(user_id=user_id, replies=replies, cursor=cursor)
+        request_data = self.__builder.user_tweets(
+            user_id=user_id, replies=replies, cursor=cursor
+        )
         response = self.__get_response__(**request_data)
         return response
 
@@ -134,7 +161,7 @@ class Request:
 
         request_data = self.__builder.search(keyword, cursor, filter_)
         # del request_data['headers']['content-type']
-        request_data['headers']['referer'] = f"https://twitter.com/search?q={keyword}"
+        request_data["headers"]["referer"] = f"https://twitter.com/search?q={keyword}"
 
         response = self.__get_response__(**request_data)
         return response
@@ -160,11 +187,15 @@ class Request:
         return response
 
     def get_untrusted_inbox(self, max_id, low_quality=False):
-        response = self.__get_response__(**self.__builder.get_untrusted_inbox(max_id, low_quality))
+        response = self.__get_response__(
+            **self.__builder.get_untrusted_inbox(max_id, low_quality)
+        )
         return response
 
     def get_conversation(self, conversation_id, max_id=None):
-        response = self.__get_response__(**self.__builder.get_conversation_with_messages(conversation_id, max_id))
+        response = self.__get_response__(
+            **self.__builder.get_conversation_with_messages(conversation_id, max_id)
+        )
         return response
 
     def send_message(self, conversation_id, text, media_id):
@@ -190,14 +221,16 @@ class Request:
     def create_tweet(self, text, files, filter_, reply_to, pool):
         if pool:
             response = self.create_pool(pool)
-            pool = response.get('card_uri')
+            pool = response.get("card_uri")
 
         request_data = self.__builder.create_tweet(text, files, filter_, reply_to, pool)
         response = self.__get_response__(**request_data)
         return response
 
     def set_media_set_metadata(self, media_id, alt_text, sensitive_tags):
-        request_data = self.__builder.set_media_metadata(media_id, alt_text, sensitive_tags)
+        request_data = self.__builder.set_media_metadata(
+            media_id, alt_text, sensitive_tags
+        )
         response = self.__get_response__(ignoreNoneData=True, **request_data)
         print(response)
         return response
@@ -209,8 +242,8 @@ class Request:
 
     def upload_media_append(self, media_id, payload, headers, segment_index):
         request_data = self.__builder.upload_media_append(media_id, segment_index)
-        request_data['headers'].update(headers)
-        request_data['data'] = payload
+        request_data["headers"].update(headers)
+        request_data["data"] = payload
 
         response = self.__get_response__(ignoreNoneData=True, **request_data)
         return response
@@ -266,12 +299,16 @@ class Request:
         return response
 
     def get_community_tweets(self, community_id, filter_, cursor):
-        request_data = self.__builder.get_community_tweets(community_id, filter_, cursor)
+        request_data = self.__builder.get_community_tweets(
+            community_id, filter_, cursor
+        )
         response = self.__get_response__(**request_data)
         return response
 
     def get_community_members(self, community_id, filter_, cursor):
-        request_data = self.__builder.get_community_members(community_id, filter_, cursor)
+        request_data = self.__builder.get_community_members(
+            community_id, filter_, cursor
+        )
         response = self.__get_response__(**request_data)
         return response
 
@@ -282,13 +319,13 @@ class Request:
 
     def follow_user(self, user_id):
         request_data = self.__builder.follow_user(user_id)
-        request_data['headers']['Content-Type'] = f"application/x-www-form-urlencoded"
+        request_data["headers"]["Content-Type"] = f"application/x-www-form-urlencoded"
         response = self.__get_response__(**request_data)
         return response
 
     def unfollow_user(self, user_id):
         request_data = self.__builder.unfollow_user(user_id)
-        request_data['headers']['Content-Type'] = f"application/x-www-form-urlencoded"
+        request_data["headers"]["Content-Type"] = f"application/x-www-form-urlencoded"
         response = self.__get_response__(**request_data)
         return response
 
@@ -332,20 +369,29 @@ class Request:
         response = self.__get_response__(**request_data)
         return response
 
-    def download_media(self, media_url, filename: str = None, progress_callback: Callable[[str, int, int], None] = None):
-        filename = os.path.basename(media_url).split("?")[0] if not filename else filename
+    def download_media(
+        self,
+        media_url,
+        filename: str = None,
+        progress_callback: Callable[[str, int, int], None] = None,
+    ):
+        filename = (
+            os.path.basename(media_url).split("?")[0] if not filename else filename
+        )
         headers = self.__builder._get_headers()
-        oldReferer = headers.get('Referer')
+        oldReferer = headers.get("Referer")
 
         if media_url.startswith("https://ton.twitter.com"):
-            headers['Referer'] = "https://twitter.com/"
+            headers["Referer"] = "https://twitter.com/"
             self.__session.header = headers
 
-        with self.__session.stream('GET', media_url, follow_redirects=True, headers=headers) as response:
+        with self.__session.stream(
+            "GET", media_url, follow_redirects=True, headers=headers
+        ) as response:
             response.raise_for_status()
-            total_size = int(response.headers['Content-Length'])
+            total_size = int(response.headers["Content-Length"])
             downloaded = 0
-            f = open(filename, 'wb')
+            f = open(filename, "wb")
             for chunk in response.iter_bytes(chunk_size=8192):
                 f.write(chunk)
                 downloaded += len(chunk)
@@ -356,6 +402,6 @@ class Request:
             f.close()
 
         if oldReferer:
-            self.__session.headers['Referer'] = oldReferer
+            self.__session.headers["Referer"] = oldReferer
 
         return filename

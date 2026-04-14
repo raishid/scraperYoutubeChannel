@@ -1,24 +1,41 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.8
+FROM python:3.11-slim-bookworm
 
-RUN apt update && apt install -y unzip xvfb libxi6 libgconf-2-4 wget curl
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-RUN apt update && apt install -y google-chrome-stable
+ENV PYTHONDONTWRITEBYTECODE=1 \
+	PYTHONUNBUFFERED=1 \
+	PIP_NO_CACHE_DIR=1 \
+	PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-COPY ./requirements.txt /tmp/
+WORKDIR /app
 
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	ca-certificates \
+	curl \
+	gnupg \
+	unzip \
+	xvfb \
+	libxi6 \
+	libgconf-2-4 \
+	wget \
+	fonts-liberation \
+	libnss3 \
+	libxss1 \
+	libasound2 \
+	libatk-bridge2.0-0 \
+	libgtk-3-0 && \
+	mkdir -p /etc/apt/keyrings && \
+	curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
+	echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+	apt-get update && apt-get install -y --no-install-recommends google-chrome-stable && \
+	rm -rf /var/lib/apt/lists/*
 
-RUN playwright install
+COPY requirements.txt /tmp/requirements.txt
 
-RUN mkdir -p /usr/src/app
+RUN python -m pip install --upgrade pip setuptools wheel && \
+	pip install -r /tmp/requirements.txt && \
+	python -m playwright install --with-deps chromium
 
-COPY . /usr/src/app
-
-COPY ./_io_epoll.py /usr/local/lib/python3.8/site-packages/trio/_core/
-
-WORKDIR /usr/src/app
+COPY . /app
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--conf", "/usr/src/app/gunicorn_conf.py", "--bind", "0.0.0.0:5000", "wsgi:application"]
+CMD ["gunicorn", "--config", "/app/gunicorn_conf.py", "wsgi:application"]
